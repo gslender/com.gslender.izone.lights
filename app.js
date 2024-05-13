@@ -40,64 +40,82 @@ class iZoneApp extends Homey.App {
         });
     }
 
+
     this.state = {};
-    this.refresh();
-    // auto-refresh every 60 seconds
-    this.pollingId = setInterval(() => { this.refresh(); }, 60000);
-  }
-
-  async onUninit() {
-    clearInterval(this.pollingId);
-  }
-
-
-  async refresh() {
-
-    // connect and getiLightSystemInfo 
-    let result = await this.getiLightSystemInfo();
-
-    if (result.status === "ok") {
-      this.state.ilight = {};
-      this.state.ilight.sysinfo = result.iLightSystem
-
-      // getLightInfo
-      this.state.ilight.lights = {};
-
-      let promises = [];
-      for (let i = 0; i < result.iLightSystem.LiNext; i++) {
-        promises.push(this.getLightInfo(i));
-      }
-      // Wait for all promises to resolve
-      const results = await Promise.all(promises);
-      // Process each result
-      results.forEach((resultLights, i) => {
-        if (resultLights.status === "ok") {
-          let lightname = "L" + (i + 1);
-          this.state.ilight.lights[lightname] = resultLights.iLight;
-        }
-      });
-    }
+    this.state.ilight = {};
+    this.state.ilight.lights = {};
 
     // getFirmwareList
     let resultFmw = await this.getFirmwareList();
     if (resultFmw.status === "ok") {
       this.state.firmware = resultFmw.Fmw;
     }
+    this.startPolling();
+  }
 
-    // update the drivers and devices
-    const drivers = this.homey.drivers.getDrivers();
-    for (const driver in drivers) {
-      let devices = this.homey.drivers.getDriver(driver).getDevices();
+  async onUninit() {
+    this.pausePolling();
+  }
 
-      for (let i = 0; i < devices.length; i++) {
-        let device = devices[i];
-        if (device.updateCapabilities) {
-          device.updateCapabilities();
-        }
+  isPaused = false; // This flag checks if the polling is paused
+
+  async resetPolling() {
+    this.pausePolling();
+    setTimeout(() => {
+      this.resumePolling();
+    }, 500);
+  }
+
+  async startPolling() {
+    setTimeout(() => {
+      if (!this.isPaused) {
+        this.polling().then(() => {
+          this.startPolling(); // Recursively start polling again
+        });
       }
+    }, 200); // Wait for 200ms before the next poll
+  }
+
+  async pausePolling() {
+    this.isPaused = true; // This pauses the polling
+  }
+
+  async resumePolling() {
+    if (this.isPaused) {
+      this.isPaused = false;
+      this.startPolling(); // Resume polling
     }
   }
 
+  async polling() {
+    if (this.refreshLightList === undefined) {
+      // starting or repeating, so do getiLightSystemInfo 
+      this.refreshLightList = [];
+      let result = await this.getiLightSystemInfo();
+
+      if (result.status === "ok") {
+        this.state.ilight.sysinfo = result.iLightSystem;
+        for (let i = 0; i < result.iLightSystem.LiNext; i++) {
+          this.refreshLightList.push(i);
+        }
+      }
+      return;
+    }
+
+    // now pop a light num and do getLightInfo...
+    const lightNum = this.refreshLightList.pop();
+    if (lightNum != undefined) {
+      const resultLight = this.getLightInfo(lightNum);
+      if (resultLight.status === "ok") {
+        let lightIdx = "L" + (i + 1);
+        this.state.ilight.lights[lightIdx] = resultLight.iLight;
+        updateCapabilitiesDeviceId(lightIdx);
+      }
+      return;
+    }
+    // pop failed so reset refreshLightList
+    this.refreshLightList = undefined;
+  }
 
   async getiLightSystemInfo() {
     if (!isValidIPAddress(this.ipaddress)) return {};
@@ -117,13 +135,6 @@ class iZoneApp extends Homey.App {
         body: JSON.stringify(mapBody)
       });
       const responseData = await response.json();
-
-      // if (this.enableRespDebug) {
-      //   for (const [name, value] of response.headers.entries()) {
-      //     this.log(`resp.headers: ${name} : ${value}`);
-      //   }
-      //   this.log(`resp.data: ${JSON.stringify(responseData)}`);
-      // }
 
       respData = responseData;
       if (respData.hasOwnProperty("iLightSystem")) respData.status = "ok";
@@ -153,13 +164,6 @@ class iZoneApp extends Homey.App {
       });
       const responseData = await response.json();
 
-      // if (this.enableRespDebug) {
-      //   for (const [name, value] of response.headers.entries()) {
-      //     this.log(`resp.headers: ${name} : ${value}`);
-      //   }
-      //   this.log(`resp.data: ${JSON.stringify(responseData)}`);
-      // }
-
       respData = responseData;
       if (respData.hasOwnProperty("iLight")) respData.status = "ok";
     } catch (e) {
@@ -167,6 +171,20 @@ class iZoneApp extends Homey.App {
       respData.status = "failed: " + e;
     }
     return respData;
+  }
+
+  async updateCapabilitiesDeviceId(id) {
+    // update the drivers and devices
+    const drivers = this.homey.drivers.getDrivers();
+    for (const driver in drivers) {
+      const devices = this.homey.drivers.getDriver(driver).getDevices();
+      for (const device in devices) {
+        if (device.getData().id === id && device.updateCapabilities) {
+          device.updateCapabilities();
+          break;
+        }
+      }
+    }
   }
 
   async getFirmwareList() {
@@ -188,13 +206,6 @@ class iZoneApp extends Homey.App {
       });
       const responseData = await response.json();
 
-      // if (this.enableRespDebug) {
-      //   for (const [name, value] of response.headers.entries()) {
-      //     this.log(`resp.headers: ${name} : ${value}`);
-      //   }
-      //   this.log(`resp.data: ${JSON.stringify(responseData)}`);
-      // }
-
       respData = responseData;
       if (respData.hasOwnProperty("Fmw")) respData.status = "ok";
     } catch (e) {
@@ -205,10 +216,6 @@ class iZoneApp extends Homey.App {
   }
 
   async sendSimpleiLightCmd(cmd, value) {
-    return this.sendSimpleiLightCmdWithBody(JSON.stringify({ [cmd]: value }));
-  }
-
-  async sendSimpleiLightCmdWithBody(cmdbody) {
     if (!isValidIPAddress(this.ipaddress)) return {};
     return this.sendSimpleUriCmdWithBody(
       `http://${this.ipaddress}:80/iLightCommand`,

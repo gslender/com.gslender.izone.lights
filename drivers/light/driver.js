@@ -21,7 +21,7 @@ class iZoneLightDriver extends Driver {
     var devices = [];
     for (const keyid in this.homey.app.state.ilight.lights) {
       const light = this.homey.app.state.ilight.lights[keyid];
-      const device = { name: light.Name, data: { id: keyid }, store: { index: light.Index } }; 
+      const device = { name: light.Name, data: { id: keyid } }; 
       devices.push(device);
       
     }
