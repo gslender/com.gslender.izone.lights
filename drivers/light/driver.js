@@ -17,13 +17,11 @@ class iZoneLightDriver extends Driver {
    * This should return an array with the data of devices that are available for pairing.
    */
   async onPairListDevices() {
-    await this.homey.app.refresh();
     var devices = [];
     for (const keyid in this.homey.app.state.ilight.lights) {
       const light = this.homey.app.state.ilight.lights[keyid];
       const device = { name: light.Name, data: { id: keyid } }; 
       devices.push(device);
-      
     }
 
     return devices;

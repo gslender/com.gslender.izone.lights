@@ -24,7 +24,7 @@ class iZoneApp extends Homey.App {
 
     // uncomment only for testing !!
     // this.homey.settings.unset('izone.ipaddress');
-    this.enableRespDebug = true;
+    this.enableRespDebug = false;
 
     this.ipaddress = this.homey.settings.get('izone.ipaddress');
 
@@ -105,11 +105,11 @@ class iZoneApp extends Homey.App {
     // now pop a light num and do getLightInfo...
     const lightNum = this.refreshLightList.pop();
     if (lightNum != undefined) {
-      const resultLight = this.getLightInfo(lightNum);
+      const resultLight = await this.getLightInfo(lightNum);
       if (resultLight.status === "ok") {
-        let lightIdx = "L" + (i + 1);
+        let lightIdx = "L" + resultLight.iLight.Index;
         this.state.ilight.lights[lightIdx] = resultLight.iLight;
-        updateCapabilitiesDeviceId(lightIdx);
+        this.updateCapabilitiesDeviceId(lightIdx);
       }
       return;
     }
@@ -178,7 +178,7 @@ class iZoneApp extends Homey.App {
     const drivers = this.homey.drivers.getDrivers();
     for (const driver in drivers) {
       const devices = this.homey.drivers.getDriver(driver).getDevices();
-      for (const device in devices) {
+      for (const device of devices) {
         if (device.getData().id === id && device.updateCapabilities) {
           device.updateCapabilities();
           break;

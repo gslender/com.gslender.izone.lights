@@ -17,16 +17,16 @@ class iZoneLightDevice extends Device {
       const light = this.getThisLight();
       if (light == undefined) return;
       this.homey.app.sendSimpleiLightCmd("LiOn", { No: light.Index, On: value ? 1 : 0 });
-      this.homey.app.state = {};
-      setTimeout(() => { this.homey.app.refresh(); }, 500);
+      this.homey.app.state.ilight.lights[this.getData().id] = undefined;
+      this.homey.app.resetPolling();
     });
 
     this.registerCapabilityListener("dim", async (value) => {
       const light = this.getThisLight();
       if (light == undefined) return;
       this.homey.app.sendSimpleiLightCmd("LiBright", { No: light.Index, Bright: value });
-      this.homey.app.state = {};
-      setTimeout(() => { this.homey.app.refresh(); }, 500);
+      this.homey.app.state.ilight.lights[this.getData().id] = undefined;
+      this.homey.app.resetPolling();
     });
 
     this.registerCapabilityListener("light_mode", async (value) => {
@@ -42,8 +42,8 @@ class iZoneLightDevice extends Device {
         const temp = this.getCapabilityValue('light_temperature');
         this.homey.app.sendSimpleiLightCmd("LiTemp", { No: light.Index, Temp: temp });
       }
-      this.homey.app.state = {};
-      setTimeout(() => { this.homey.app.refresh(); }, 500);
+      this.homey.app.state.ilight.lights[this.getData().id] = undefined;
+      this.homey.app.resetPolling();
     });
 
     this.registerCapabilityListener("light_hue", async (value) => {
@@ -53,8 +53,8 @@ class iZoneLightDevice extends Device {
       const sat = this.getCapabilityValue('light_saturation');
       const rgb = colorconvert.hsl.rgb([value, sat, lev]);
       this.homey.app.sendSimpleiLightCmd("LiRgb", { No: light.Index, R: rgb[0], G: rgb[1], B: rgb[2] });
-      this.homey.app.state = {};
-      setTimeout(() => { this.homey.app.refresh(); }, 500);
+      this.homey.app.state.ilight.lights[this.getData().id] = undefined;
+      this.homey.app.resetPolling();
     });
 
     this.registerCapabilityListener("light_saturation", async (value) => {
@@ -64,16 +64,16 @@ class iZoneLightDevice extends Device {
       const hue = this.getCapabilityValue('light_hue');
       const rgb = colorconvert.hsl.rgb([hue, value, lev]);
       this.homey.app.sendSimpleiLightCmd("LiRgb", { No: light.Index, R: rgb[0], G: rgb[1], B: rgb[2] });
-      this.homey.app.state = {};
-      setTimeout(() => { this.homey.app.refresh(); }, 500);
+      this.homey.app.state.ilight.lights[this.getData().id] = undefined;
+      this.homey.app.resetPolling();
     });
 
     this.registerCapabilityListener("light_temperature", async (value) => {
       const light = this.getThisLight();
       if (light == undefined) return;
       this.homey.app.sendSimpleiLightCmd("LiTemp", { No: light.Index, Temp: value });
-      this.homey.app.state = {};
-      setTimeout(() => { this.homey.app.refresh(); }, 500);
+      this.homey.app.state.ilight.lights[this.getData().id] = undefined;
+      this.homey.app.resetPolling();
     });
   }
 
@@ -83,11 +83,8 @@ class iZoneLightDevice extends Device {
   }
 
   async updateCapabilities() {
-
     const light = this.getThisLight();
     if (light == undefined) return;
-
-
     this.setCapabilityValue('onoff', light.On === 1);
     if (light.Type === 'CL5') {
       this.setCapabilityValue('dim', light.Brig);
