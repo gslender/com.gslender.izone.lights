@@ -1,1 +1,1 @@
-Homey App for the iZone range of AC and Lighting devices
+Homey App for the iZone range of Lighting devices

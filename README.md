@@ -1,2 +1,2 @@
-# com.gslender.izone
-Homey App for the iZone range of AC and Lighting devices
+# com.gslender.izone.lights
+Homey App for the iZone range of Lighting devices

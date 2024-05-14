@@ -1,6 +1,6 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
-  "id": "com.gslender.izone",
+  "id": "com.gslender.izone.lights",
   "version": "1.0.0",
   "compatibility": ">=5.0.0",
   "sdk": 3,
@@ -8,13 +8,13 @@
     "local"
   ],
   "name": {
-    "en": "iZone"
+    "en": "iZone Lighting"
   },
   "description": {
     "en": "iZone Lighting - The smart home has arrived. Control everything from your smart device."
   },
   "category": [
-    "climate"
+    "lights"
   ],
   "permissions": [],
   "images": {
