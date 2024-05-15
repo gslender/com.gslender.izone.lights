@@ -36,7 +36,7 @@
       "name": {
         "en": "Lights"
       },
-      "class": "thermostat",
+      "class": "light",
       "capabilities": [
         "dim",
         "light_hue",
@@ -70,6 +70,48 @@
         }
       ],
       "id": "light"
+    },
+    {
+      "name": {
+        "en": "Smart Plug"
+      },
+      "class": "socket",
+      "capabilities": [
+        "onoff"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "images": {
+        "small": "/drivers/smartplug/assets/images/small.png",
+        "large": "/drivers/smartplug/assets/images/large.png",
+        "xlarge": "/drivers/smartplug/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "list_my_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "choose_slave"
+          }
+        },
+        {
+          "id": "choose_slave",
+          "template": "choose_slave",
+          "navigation": {
+            "prev": "list_my_devices",
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "smartplug"
     }
   ]
 }

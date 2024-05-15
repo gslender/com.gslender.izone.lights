@@ -2,13 +2,13 @@
 
 const { Driver } = require('homey');
 
-class iZoneLightDriver extends Driver {
+class iZoneSmartPlugDriver extends Driver {
 
   /**
    * onInit is called when the driver is initialized.
    */
   async onInit() {
-    this.log('iZoneLightDriver has been initialized');
+    this.log('iZoneSmartPlugDriver has been initialized');
   }
 
   /**
@@ -20,8 +20,8 @@ class iZoneLightDriver extends Driver {
     var devices = [];
     for (const keyid in this.homey.app.state.ilight.lights) {
       const light = this.homey.app.state.ilight.lights[keyid];
-      if (light.Type === 'CL5') {
-        const device = { name: light.Name, data: { id: keyid }}; 
+      if (light.Type != 'CL5') {
+        const device = { name: light.Name, data: { id: keyid } }; 
         devices.push(device);
       }
     }
@@ -31,4 +31,4 @@ class iZoneLightDriver extends Driver {
 
 }
 
-module.exports = iZoneLightDriver;
+module.exports = iZoneSmartPlugDriver;
