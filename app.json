@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "compatibility": ">=5.0.0",
   "sdk": 3,
+  "brandColor": "#384e4e",
   "platforms": [
     "local"
   ],
@@ -11,7 +12,7 @@
     "en": "iZone Lighting"
   },
   "description": {
-    "en": "iZone Lighting - The smart home has arrived. Control everything from your smart device."
+    "en": "Lighting control across all your home."
   },
   "category": [
     "lights"
