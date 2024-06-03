@@ -29,7 +29,7 @@
   "api": {
     "sendMessageAndReturnAddress": {
       "method": "get",
-      "path": "/sendMessageAndReturnAddress/"
+      "path": "/sendMessageAndReturnAddress"
     }
   },
   "drivers": [
@@ -54,8 +54,7 @@
       ],
       "images": {
         "small": "/drivers/light/assets/images/small.png",
-        "large": "/drivers/light/assets/images/large.png",
-        "xlarge": "/drivers/light/assets/images/xlarge.png"
+        "large": "/drivers/light/assets/images/large.png"
       },
       "pair": [
         {
@@ -88,8 +87,7 @@
       ],
       "images": {
         "small": "/drivers/smartplug/assets/images/small.png",
-        "large": "/drivers/smartplug/assets/images/large.png",
-        "xlarge": "/drivers/smartplug/assets/images/xlarge.png"
+        "large": "/drivers/smartplug/assets/images/large.png"
       },
       "pair": [
         {
