@@ -17,7 +17,7 @@ class iZoneSmartPlugDevice extends Device {
       const light = this.getThisLight();
       if (light == undefined) return;
       await this.homey.app.sendSimpleiLightCmd("LiOn", { No: light.Index, On: value ? 1 : 0 });
-      this.homey.app.pausePolling(500);
+      this.homey.app.refreshPolling(500); 
     });
 
   }

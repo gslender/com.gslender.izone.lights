@@ -2,7 +2,7 @@
 
 const Homey = require('homey');
 const dgram = require('dgram');
-const { fetch } = require('undici');
+const axios = require('axios');
 
 function isValidIPAddress(ipaddress) {
   // Check if ipaddress is undefined or null
@@ -25,8 +25,6 @@ class iZoneApp extends Homey.App {
     // uncomment only for testing !!
     // this.homey.settings.unset('izone.ipaddress');
     this.enableRespDebug = true;
-
-    this.isPaused = false; // This flag checks if the polling is paused
 
     this.updateSettings();
 
@@ -53,26 +51,29 @@ class iZoneApp extends Homey.App {
     }
 
     this.isRunning = true;
-    this.homey.setTimeout(async () => {
-      while (this.isRunning) {
-        if (!this.isPaused) {
-          await this.polling();
-        }
-        await this.sleep(this.pollingInterval/15);
-      }
-    }, 1000); // start 1 second after init
+    this.refreshPolling(1000); // start 1 second after init
 
     this.homey.settings.on('set', this.onSettingsChanged.bind(this));
   }
 
-  async onSettingsChanged(key)  {
+  refreshPolling(delay) {
+    delay = delay || 0;
+    this.homey.clearInterval(this.pollingID);
+    this.homey.setTimeout(async () => {
+      this.refresh();     
+      this.pollingID = this.homey.setInterval(async () => {
+        if (this.isRunning) this.refresh();
+      }, this.pollingInterval);  
+    }, delay);
+  }
+
+  async onSettingsChanged(key) {
     if (key === 'izone.polling' || key === 'izone.ipaddress') {
-      this.pausePolling();
       this.updateSettings();
-      this.homey.setTimeout(async () => {        
-        this.resumePolling();
+      this.homey.setTimeout(async () => {
+        this.refreshPolling();
         await this.homey.api.realtime("settingsChanged", "otherSuccess");
-      }, 5000);
+      }, 1000);
     }
   }
 
@@ -80,69 +81,41 @@ class iZoneApp extends Homey.App {
     this.ipaddress = this.homey.settings.get('izone.ipaddress');
 
     const MIN_POLLING_INTERVAL = 15000;
-    const MAX_POLLING_INTERVAL = 300000;    
-    
-    let pollingInterval = parseInt(this.homey.settings.get('izone.polling'), 10);    
-    
+    const MAX_POLLING_INTERVAL = 300000;
+
+    let pollingInterval = parseInt(this.homey.settings.get('izone.polling'), 10);
+
     if (typeof pollingInterval !== 'number' || isNaN(pollingInterval)) {
       pollingInterval = MIN_POLLING_INTERVAL; // Default value if not a number or undefined
     } else {
       pollingInterval = Math.max(MIN_POLLING_INTERVAL, Math.min(MAX_POLLING_INTERVAL, pollingInterval));
     }
-    
+
     this.pollingInterval = pollingInterval;
     this.log('Remote address:', this.ipaddress);
     this.log('Polling interval:', this.pollingInterval);
-  }
-
-  async sleep(ms) {
-    // console.log(`Paused for ${ms/1000} seconds`);
-    return new Promise(resolve => this.homey.setTimeout(resolve, ms));
   }
 
   async onUninit() {
     this.isRunning = false;
   }
 
-  async pausePolling(delay) {
-    this.isPaused = true;
-    if (delay) this.homey.setTimeout(async () => { this.resumePolling(); }, delay);
-  }
-
-  async resumePolling() {
-    this.isPaused = false;
-  }
-
-  async polling() {
-    if (this.refreshLightList === undefined) {
-      // starting or repeating, so do getiLightSystemInfo 
-      let result = await this.getiLightSystemInfo();
-      this.refreshLightList = [];
-
-      if (result.status === "ok") {
-        this.state.ilight.sysinfo = result.iLightSystem;
-        for (let i = 0; i < result.iLightSystem.LiNext; i++) {
-          this.refreshLightList.push(i);
+  async refresh() {
+    // starting or repeating, so do getiLightSystemInfo 
+    let result = await this.getiLightSystemInfo();
+    if (result.status === "ok") {
+      this.state.ilight.sysinfo = result.iLightSystem;
+      for (let lightNum = 0; lightNum < result.iLightSystem.LiNext; lightNum++) {
+        const resultLight = await this.getLightInfo(lightNum);
+        if (resultLight.status === "ok") {
+          let lightIdx = "L" + resultLight.iLight.Index;
+          this.state.ilight.lights[lightIdx] = resultLight.iLight;
+          this.updateCapabilitiesDeviceId(lightIdx);
         }
       }
-      return;
     }
-
-    // now pop a light num and do getLightInfo...
-    const lightNum = this.refreshLightList.pop();
-    if (lightNum != undefined) {
-      const resultLight = await this.getLightInfo(lightNum);
-      if (resultLight.status === "ok") {
-        let lightIdx = "L" + resultLight.iLight.Index;
-        this.state.ilight.lights[lightIdx] = resultLight.iLight;
-        this.updateCapabilitiesDeviceId(lightIdx);
-      }
-      return;
-    }
-    // pop failed so reset refreshLightList
-    this.refreshLightList = undefined;
   }
-  
+
   async getiLightSystemInfo() {
     if (!isValidIPAddress(this.ipaddress)) return {};
     const uri = `http://${this.ipaddress}:80/iLightRequest`;
@@ -153,16 +126,12 @@ class iZoneApp extends Homey.App {
 
     try {
       respData.status = "failed";
-      const response = await fetch(uri, {
-        method: 'POST',
+      const response = await axios.post(uri, JSON.stringify(mapBody), {
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(mapBody)
+        }
       });
-      const responseData = await response.json();
-
-      respData = responseData;
+      respData = response.data;
       if (respData.hasOwnProperty("iLightSystem")) respData.status = "ok";
     } catch (e) {
       if (this.enableRespDebug) this.log(`getiLightSystemInfo() ERROR: ${e}`);
@@ -181,16 +150,12 @@ class iZoneApp extends Homey.App {
 
     try {
       respData.status = "failed";
-      const response = await fetch(uri, {
-        method: 'POST',
+      const response = await axios.post(uri, JSON.stringify(mapBody), {
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(mapBody)
+        }
       });
-      const responseData = await response.json();
-
-      respData = responseData;
+      respData = response.data;
       if (respData.hasOwnProperty("iLight")) respData.status = "ok";
     } catch (e) {
       if (this.enableRespDebug) this.log(`getLightInfo() ERROR: ${e}`);
@@ -223,16 +188,12 @@ class iZoneApp extends Homey.App {
 
     try {
       respData.status = "failed";
-      const response = await fetch(uri, {
-        method: 'POST',
+      const response = await axios.post(uri, JSON.stringify(mapBody), {
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(mapBody)
+        }
       });
-      const responseData = await response.json();
-
-      respData = responseData;
+      respData = response.data;
       if (respData.hasOwnProperty("Fmw")) respData.status = "ok";
     } catch (e) {
       if (this.enableRespDebug) this.log(`getFirmwareList() ERROR: ${e}`);
@@ -249,27 +210,16 @@ class iZoneApp extends Homey.App {
   }
 
   async sendSimpleUriCmdWithBody(uri, cmdbody) {
-    const params = {
-      uri: uri,
-      body: cmdbody,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    };
-
-    if (this.enableRespDebug) this.log(`sendSimpleUriCmdWithBody() params: ${JSON.stringify(params)}`);
+    if (this.enableRespDebug) this.log(`sendSimpleUriCmdWithBody() uri: ${uri} cmdbody: ${cmdbody}`);
 
     try {
-      const response = await fetch(params.uri, {
-        method: params.method,
-        headers: params.headers,
-        body: params.body
+      const response = await axios.post(uri, cmdbody, {
+        responseType: 'text',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-
-      const respData = await response.text();
-
-      return { status: respData };
+      return { status: response.data };
     } catch (e) {
       if (this.enableRespDebug) this.log(`sendSimpleUriCmdWithBody() ERROR: ${e}`);
       return { status: `failed: ${e}` };

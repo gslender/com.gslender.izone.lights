@@ -10,5 +10,8 @@
   },
   "1.0.3": {
     "en": "Added settings based polling interval"
+  },
+  "1.0.4": {
+    "en": "Fixed polling bugs"
   }
 }
